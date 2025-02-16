@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { View, StyleSheet, FlatList, Dimensions } from "react-native";
-import ProfileCard from "@/components/ProfileCard";
+import { View, StyleSheet, Dimensions } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Text } from "react-native-paper";
+import SwipeableCard from "@/components/SwipeableCard";
 
 // Dummy data
 const DUMMY_PROFILES = [
@@ -45,33 +47,40 @@ export default function DiscoverScreen() {
   };
 
   const handleLike = () => {
-    setCurrentIndex(prev => Math.min(prev + 1, DUMMY_PROFILES.length - 1));
+    setCurrentIndex((prev) => Math.min(prev + 1, DUMMY_PROFILES.length - 1));
   };
 
   const handleDislike = () => {
-    setCurrentIndex(prev => Math.min(prev + 1, DUMMY_PROFILES.length - 1));
+    setCurrentIndex((prev) => Math.min(prev + 1, DUMMY_PROFILES.length - 1));
   };
 
+  if (currentIndex >= DUMMY_PROFILES.length) {
+    return (
+      <View style={styles.centered}>
+        <Text variant="headlineMedium">No more profiles</Text>
+        <Text variant="bodyMedium" style={styles.subtitle}>
+          Check back later for more matches!
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={DUMMY_PROFILES}
-        renderItem={({ item }) => (
-          <ProfileCard
-            {...item}
+    <GestureHandlerRootView style={styles.container}>
+      {DUMMY_PROFILES.map((profile, index) => {
+        if (index < currentIndex) return null;
+        
+        return (
+          <SwipeableCard
+            key={profile.id}
+            {...profile}
             onSpark={handleSpark}
             onLike={handleLike}
             onDislike={handleDislike}
           />
-        )}
-        pagingEnabled
-        snapToAlignment="start"
-        decelerationRate="fast"
-        snapToInterval={Dimensions.get("window").height - 120}
-        showsVerticalScrollIndicator={false}
-        keyExtractor={item => item.id}
-      />
-    </View>
+        );
+      }).reverse()}
+    </GestureHandlerRootView>
   );
 }
 
@@ -79,5 +88,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  subtitle: {
+    marginTop: 8,
+    opacity: 0.7,
   },
 });
