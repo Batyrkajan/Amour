@@ -1,26 +1,60 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { View, StyleSheet } from "react-native";
 import { Text, Surface } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/auth";
+import type { MessageStatus } from "@/types/chat";
+import { useInView } from "react-native-intersection-observer";
 
 type ChatMessageProps = {
   content: string;
   senderId: string;
   timestamp: string;
   isAI?: boolean;
+  status?: MessageStatus;
+  onVisible?: () => void;
 };
 
-export function ChatMessage({ content, senderId, timestamp, isAI }: ChatMessageProps) {
+const STATUS_ICONS = {
+  sending: "clock-outline",
+  sent: "check",
+  delivered: "check-all",
+  read: "check-all",
+  error: "alert-circle",
+};
+
+const STATUS_COLORS = {
+  sending: "#999",
+  sent: "#999",
+  delivered: "#999",
+  read: "#34C759",
+  error: "#FF3B30",
+};
+
+export function ChatMessage({
+  content,
+  senderId,
+  timestamp,
+  isAI,
+  status,
+  onVisible,
+}: ChatMessageProps) {
   const { session } = useAuth();
   const isCurrentUser = senderId === session?.user.id;
+  const { ref, inView } = useInView({
+    threshold: 0.5,
+  });
+  const visibilityReported = useRef(false);
+
+  useEffect(() => {
+    if (inView && !visibilityReported.current && onVisible) {
+      onVisible();
+      visibilityReported.current = true;
+    }
+  }, [inView, onVisible]);
 
   return (
-    <View
-      style={[
-        styles.container,
-        isCurrentUser ? styles.currentUser : styles.otherUser,
-      ]}
-    >
+    <View ref={ref}>
       {isAI && (
         <Text variant="labelSmall" style={styles.aiLabel}>
           AI Wingman
@@ -34,12 +68,22 @@ export function ChatMessage({ content, senderId, timestamp, isAI }: ChatMessageP
         ]}
       >
         <Text style={styles.message}>{content}</Text>
-        <Text variant="labelSmall" style={styles.timestamp}>
-          {new Date(timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
+        <View style={styles.footer}>
+          <Text variant="labelSmall" style={styles.timestamp}>
+            {new Date(timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+          {isCurrentUser && status && (
+            <MaterialCommunityIcons
+              name={STATUS_ICONS[status]}
+              size={14}
+              color={STATUS_COLORS[status]}
+              style={styles.statusIcon}
+            />
+          )}
+        </View>
       </Surface>
     </View>
   );
@@ -81,4 +125,12 @@ const styles = StyleSheet.create({
     color: "#FF4B4B",
     marginBottom: 4,
   },
-}); 
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  statusIcon: {
+    marginLeft: 4,
+  },
+});
