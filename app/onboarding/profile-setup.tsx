@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { View, StyleSheet, ScrollView, Image } from "react-native";
 import {
   Text,
   TextInput,
@@ -10,6 +10,7 @@ import {
 import { router } from "expo-router";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import * as ImagePicker from "expo-image-picker";
+import * as VideoInfo from "expo-media-library";
 import PhotoUploader from "@/components/PhotoUploader";
 import { ErrorMessage } from "@/components/ErrorMessage";
 import { supabase } from "@/config/supabase";
@@ -20,6 +21,7 @@ type ValidationErrors = {
   photos?: string;
   bio?: string;
   video?: string;
+  submit?: string;
 };
 
 export default function ProfileSetupScreen() {
@@ -43,9 +45,8 @@ export default function ProfileSetupScreen() {
       });
 
       if (!result.canceled && result.assets[0].uri) {
-        const { duration = 0 } = await ImagePicker.getVideoInfoAsync(
-          result.assets[0].uri
-        );
+        const asset = await VideoInfo.createAssetAsync(result.assets[0].uri);
+        const duration = asset.duration;
 
         if (duration > 31) {
           setErrors((prev) => ({
@@ -55,7 +56,6 @@ export default function ProfileSetupScreen() {
           return;
         }
 
-        // Generate thumbnail
         const { uri } = await VideoThumbnails.getThumbnailAsync(
           result.assets[0].uri,
           {
@@ -104,7 +104,6 @@ export default function ProfileSetupScreen() {
       setLoading(true);
       setErrors({});
 
-      // Upload video if exists
       let videoUrl = null;
       if (videoUri) {
         const videoResponse = await fetch(videoUri);
@@ -121,7 +120,6 @@ export default function ProfileSetupScreen() {
           .getPublicUrl(videoFileName).data.publicUrl;
       }
 
-      // Upload photos
       const photoUrls = await Promise.all(
         photos.map(async (uri) => {
           const response = await fetch(uri);
@@ -138,7 +136,6 @@ export default function ProfileSetupScreen() {
         })
       );
 
-      // Create profile
       const { error } = await supabase.from("profiles").insert({
         user_id: session?.user.id,
         name,
